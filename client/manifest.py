@@ -32,7 +32,7 @@ class Manifesto:
         self._raw: dict = data
         self.version: str = data["version"]
         self.segment_duration_s: int = data["segment_duration_s"]
-        self.servers: list[Server] = [Server(s) for s in data["servers"]]
+        self.servers: list[Server] = [Server(s) for s in sorted(data["servers"], key=lambda s: s["priority"])]
         self.representations: list[Representation] = [
             Representation(r) for r in data["representations"]
         ]
