@@ -43,7 +43,7 @@ class Manifesto:
 
 def _get_url_manifesto() -> str | None:
     try:
-        response = requests.get(server_url + "asdad", timeout=5)
+        response = requests.get(server_url, timeout=5)
         response.raise_for_status()
         return server_url + "/manifest"
     except requests.RequestException:
