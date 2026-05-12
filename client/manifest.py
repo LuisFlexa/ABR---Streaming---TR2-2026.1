@@ -7,6 +7,7 @@ load_dotenv()
 server_url = os.getenv("SERVER_URL")
 fallback_url = os.getenv("FALLBACK_URL")
 
+logger = logging.getLogger(__name__)
 
 class Server:
     def __init__(self, data: dict):
@@ -31,9 +32,9 @@ class Manifesto:
         self._raw: dict = data
         self.version: str = data["version"]
         self.segment_duration_s: int = data["segment_duration_s"]
-        self.servers: list[Server] = [self.Server(s) for s in data["servers"]]
+        self.servers: list[Server] = [Server(s) for s in data["servers"]]
         self.representations: list[Representation] = [
-            self.Representation(r) for r in data["representations"]
+            Representation(r) for r in data["representations"]
         ]
 
     def __str__(self) -> str:
@@ -42,11 +43,11 @@ class Manifesto:
 
 def _get_url_manifesto() -> str | None:
     try:
-        response = requests.get(server_url, timeout=5)
+        response = requests.get(server_url + "asdad", timeout=5)
         response.raise_for_status()
         return server_url + "/manifest"
     except requests.RequestException:
-        logging.debug("Servidor principal inacessível. Tentando fallback...")
+        logger.debug("Servidor principal inacessível. Tentando fallback...")
         try:
             response = requests.get(fallback_url, timeout=5)
             response.raise_for_status()
