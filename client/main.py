@@ -1,5 +1,6 @@
 from manifest import get_manifesto
 import logging
+from network_meter import get_segmento
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -16,3 +17,6 @@ for rep in manifest.representations:
     print(
         f"  - {rep.bitrate_kbps} kbps, {rep.segment_bytes} bytes, URL: {rep.url_path}"
     )
+
+info_do_segmento = get_segmento(manifest.servers[0], manifest.representations[0])
+print(info_do_segmento)
