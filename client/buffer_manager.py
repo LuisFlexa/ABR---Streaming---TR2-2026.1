@@ -12,11 +12,10 @@ class _BufferManager:
         self.stall_duration_s: float = 0.0
         self._t0: float = time.monotonic()
         self._t: float = 0.0
-        self._lock = threading.Lock()
         self._plt_buffer = []
         self._plt_tempo = []
-        self._plt_rebuffer_t = []
-        self._plt_rebuffer_buffer = []
+        self._plt_rebuffer = []
+        self._lock = threading.Lock()
         self._stop_event = threading.Event()
 
         self._thread = threading.Thread(target=self._consumir, daemon=True)
@@ -44,8 +43,7 @@ class _BufferManager:
             self._t: float = 0.0
             self._plt_buffer.clear()
             self._plt_tempo.clear()
-            self._plt_rebuffer_t.clear()
-            self._plt_rebuffer_buffer.clear()
+            self._plt_rebuffer.clear()
 
     def adicionar(self, valor):
         with self._lock:
@@ -55,8 +53,7 @@ class _BufferManager:
         with self._lock:
             tempo = list(self._plt_tempo)
             buffer_level = list(self._plt_buffer)
-            rebuffer_t = list(self._plt_rebuffer_t)
-            rebuffer_buffer = list(self._plt_rebuffer_buffer)
+            rebuffer_t = list(self._plt_rebuffer)
         if not tempo:
             return
         if not no_figure:
@@ -66,7 +63,7 @@ class _BufferManager:
         if rebuffer_t:
             plt.plot(
                 rebuffer_t,
-                rebuffer_buffer,
+                [0] * len(rebuffer_t),
                 marker="x",
                 linestyle="",
                 color="red",
@@ -98,14 +95,14 @@ class _BufferManager:
                     self.stall_duration_s = 0.0
                 else:
                     self.buffer_can_play = False
-                    self.rebuffer_event = True
+                    if any(self._plt_buffer): # Evita consierar rebuffer no primeiro segmento
+                        self.rebuffer_event = True
                     self.stall_duration_s += dt
 
                 self._plt_tempo.append(self._t)
                 self._plt_buffer.append(self.buffer_level_s)
                 if self.rebuffer_event:
-                    self._plt_rebuffer_t.append(self._t)
-                    self._plt_rebuffer_buffer.append(self.buffer_level_s)
+                    self._plt_rebuffer.append(self._t)
 
 
 buffer = _BufferManager()

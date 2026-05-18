@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 class _InfoNetwork:
     def __init__(self):
-        self.segmentos: list[(int, InfoSegmento)] = []
+        self.indice_ultimo_segmento = None
+        self.segmentos: list[InfoSegmento] = []
         self.jitter_ewma = 0.0
+        self.failover_total = 0
         self._jitter_ewma_alpha: float = 0.1
         self._plt_tempo = []
         self._plt_vazao = []
@@ -25,11 +27,17 @@ class _InfoNetwork:
         class_dict = {
             "segmentos": self.segmentos,
             "jitter_ewma": self.jitter_ewma,
+            "failover_total": self.failover_total,
         }
         return __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
 
     def adicionar_segmento(self, info_segmento: InfoSegmento):
-        self.segmentos.append((len(self.segmentos) + 1, info_segmento))
+        troca_de_servidor = (
+            len(self.segmentos) > 0
+            and info_segmento.server_id != self.segmentos[-1].server_id
+        )
+        self.indice_ultimo_segmento = len(self.segmentos) + 1
+        self.segmentos.append(info_segmento)
         self.jitter_ewma = (
             self._jitter_ewma_alpha * info_segmento.jitter_network_ms
             + (1 - self._jitter_ewma_alpha) * self.jitter_ewma
@@ -41,13 +49,11 @@ class _InfoNetwork:
         self._plt_vazao.append(info_segmento.vazao_kbps)
         self._plt_qualidade.append(int(info_segmento.quality.rstrip("p")))
         self._plt_jitter.append(info_segmento.jitter_network_ms)
-        if (
-            len(self.segmentos) > 1
-            and info_segmento.server_id != self.segmentos[-2][1].server_id
-        ):
-            self._plt_troca_servidor.append(
-                (len(self.segmentos) - 1, info_segmento.server_id)
-            )
+        if troca_de_servidor:
+            self.failover_total += 1
+            self._plt_troca_servidor.append(self.indice_ultimo_segmento)
+        else:
+            self._plt_troca_servidor.append(None)
 
     def plot_vazao(self, no_figure=False):
         self._plt_tempo = [t - self._plt_tempo[0] for t in self._plt_tempo]

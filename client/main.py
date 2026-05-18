@@ -38,6 +38,22 @@ for i in range(10):
     
     logger.debug(info_do_segmento)
     logger.debug(buffer)
+    
+    # testando se dados para csv estão disponíveis
+    logger.info(f"Segmento: {info_rede.indice_ultimo_segmento}")
+    logger.info(f"Timestamp: {info_do_segmento.timestamp}")
+    logger.info(f"Server ID: {info_do_segmento.server_id}")
+    logger.info(f"Quality: {info_do_segmento.quality}")
+    logger.info(f"Bitrate (kbps): {info_do_segmento.bitrate_kbps}")
+    logger.info(f"Vazão (kbps): {info_do_segmento.vazao_kbps}")
+    logger.info(f"Download time (s): {info_do_segmento.download_time_s}")
+    logger.info(f"Jitter (ms): {info_do_segmento.jitter_network_ms}")
+    logger.info(f"Jitter EWMA (ms): {info_rede.jitter_ewma}")
+    logger.info(f"Buffer level (s): {buffer.buffer_level_s}")
+    logger.info(f"Buffer can play: {buffer.buffer_can_play}")
+    logger.info(f"Rebuffer event: {buffer.rebuffer_event}")
+    logger.info(f"Stall duration: {buffer.stall_duration_s}")
+    logger.info(f"Failover total: {info_rede.failover_total}")
 
 buffer.encerrar()
 
