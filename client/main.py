@@ -30,14 +30,11 @@ buffer.reset()
 
 for i in range(10):
     info_do_segmento = get_segmento(
-        manifest.servers[0],
+        manifest.servers[0 if i < 5 else 1],
         manifest.representations[randint(0, len(manifest.representations) - 1)],
     )
 
     buffer.adicionar(manifest.segment_duration_s)
-    
-    logger.debug(info_do_segmento)
-    logger.debug(buffer)
     
     # testando se dados para csv estão disponíveis
     logger.info(f"Segmento: {info_rede.indice_ultimo_segmento}")
