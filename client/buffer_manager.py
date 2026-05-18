@@ -2,14 +2,17 @@ import threading, time
 import matplotlib.pyplot as plt
 import logging
 
+_BUFFER_DT = 0.05
 logger = logging.getLogger(__name__)
 
+
 class _BufferManager:
-    def __init__(self):
+    def __init__(self, dt: float = 0.1):
         self.buffer_level_s: float = 0.0
         self.buffer_can_play: bool = False
         self.rebuffer_event: bool = False
         self.stall_duration_s: float = 0.0
+        self._dt: float = dt
         self._t0: float = time.monotonic()
         self._t: float = 0.0
         self._plt_buffer = []
@@ -79,25 +82,25 @@ class _BufferManager:
 
     def encerrar(self):
         self._stop_event.set()
-        self._thread.join()
 
     def _consumir(self):
         while not self._stop_event.is_set():
-            dt = 0.1
             self._t = time.monotonic() - self._t0
-            time.sleep(dt)
+            time.sleep(self._dt)
 
             with self._lock:
                 if self.buffer_level_s > 0:
-                    self.buffer_level_s = max(0.0, self.buffer_level_s - dt)
+                    self.buffer_level_s = max(0.0, self.buffer_level_s - self._dt)
                     self.buffer_can_play = True
                     self.rebuffer_event = False
                     self.stall_duration_s = 0.0
                 else:
                     self.buffer_can_play = False
-                    if any(self._plt_buffer): # Evita consierar rebuffer no primeiro segmento
+                    if any(
+                        self._plt_buffer
+                    ):  # Evita consierar rebuffer no primeiro segmento
                         self.rebuffer_event = True
-                    self.stall_duration_s += dt
+                    self.stall_duration_s += self._dt
 
                 self._plt_tempo.append(self._t)
                 self._plt_buffer.append(self.buffer_level_s)
@@ -105,4 +108,4 @@ class _BufferManager:
                     self._plt_rebuffer.append(self._t)
 
 
-buffer = _BufferManager()
+buffer = _BufferManager(dt=_BUFFER_DT)
