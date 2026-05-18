@@ -145,7 +145,7 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
     url = f"{servidor.url}{representacao.url_path}"
     t_chunks_ms = []
 
-    logger.debug(f"Medindo vazão para URL: {url}")
+    logger.debug("Medindo vazão para URL: %s", url)
 
     try:
         t0 = time.time()
@@ -173,10 +173,13 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
         info.vazao_kbps = (total_bytes * 8) / (info.download_time_s * 1000)
 
         logger.debug(
-            f"Download completo: {total_bytes} bytes em {info.download_time_s:.2f} segundos, vazão: {info.vazao_kbps:.2f} kbps"
+            "Download completo: %s bytes em %.2f segundos, vazão: %.2f kbps",
+            total_bytes,
+            info.download_time_s,
+            info.vazao_kbps,
         )
     except Exception as e:
-        logger.exception(f"Erro ao medir vazão: {e}")
+        logger.exception("Erro ao medir vazão: %s", e)
         raise
 
     info_rede.adicionar_segmento(info)

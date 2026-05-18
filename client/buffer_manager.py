@@ -90,11 +90,17 @@ class _BufferManager:
 
             with self._lock:
                 if self.buffer_level_s > 0:
+                    if int(self._t) != int(self._t - self._dt):
+                        logger.debug("Consumindo buffer: nível=%fs", self.buffer_level_s)
                     self.buffer_level_s = max(0.0, self.buffer_level_s - self._dt)
                     self.buffer_can_play = True
                     self.rebuffer_event = False
                     self.stall_duration_s = 0.0
                 else:
+                    if int(self._t) != int(self._t - self._dt):
+                        logger.debug(
+                            "Buffer vazio: tempo_parado=%fs", self.stall_duration_s
+                        )
                     self.buffer_can_play = False
                     if any(
                         self._plt_buffer
