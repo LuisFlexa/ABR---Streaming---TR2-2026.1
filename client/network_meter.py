@@ -62,6 +62,7 @@ class _InfoNetwork:
             plt.figure(figsize=(12, 8))
 
         plt.plot(self._plt_tempo, self._plt_vazao, marker="o")
+        self._adicionar_troca_servidor_no_plot()
         plt.title("Vazão ao longo do tempo")
         plt.xlabel("Tempo")
         plt.ylabel("Vazão (kbps)")
@@ -81,6 +82,7 @@ class _InfoNetwork:
         plt.plot(
             self._plt_tempo, self._plt_jitter_ewma, marker="x", label="EWMA Jitter"
         )
+        self._adicionar_troca_servidor_no_plot()
         plt.title("Jitter ao longo do tempo")
         plt.xlabel("Tempo")
         plt.ylabel("Jitter (ms)")
@@ -98,6 +100,7 @@ class _InfoNetwork:
             plt.figure(figsize=(12, 8))
 
         plt.plot(self._plt_tempo, self._plt_qualidade, marker="o")
+        self._adicionar_troca_servidor_no_plot()
         plt.yticks(
             sorted(set(self._plt_qualidade)),
             labels=[f"{q}p" for q in sorted(set(self._plt_qualidade))],
@@ -110,6 +113,23 @@ class _InfoNetwork:
 
         if not no_figure:
             plt.show()
+
+    def _adicionar_troca_servidor_no_plot(self):
+        for idx in self._plt_troca_servidor:
+            if idx is not None:
+                servidor_id = self.segmentos[idx - 1].server_id
+                t = self._plt_tempo[idx - 1]
+                plt.axvline(x=t, color="red", linestyle="--", alpha=0.5)
+                plt.text(
+                    t + 0.01 * (self._plt_tempo[-1] - self._plt_tempo[0]),
+                    plt.ylim()[1] * 0.95,
+                    f"Troca para o servidor {servidor_id}",
+                    rotation=90,
+                    verticalalignment="top",
+                    color="red",
+                    fontsize=10,
+                    alpha=0.8,
+                )
 
 
 class InfoSegmento:

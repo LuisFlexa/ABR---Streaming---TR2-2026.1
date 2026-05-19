@@ -40,7 +40,7 @@ buffer.reset()
 
 for i in range(10):
     info_do_segmento = get_segmento(
-        manifest.servers[0 if i < 5 else 1],
+        manifest.servers[randint(0, len(manifest.servers) - 1)],
         manifest.representations[randint(0, len(manifest.representations) - 1)],
     )
 
