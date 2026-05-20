@@ -2,9 +2,8 @@ from manifest import get_manifesto
 import logging
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from random import randint
+from politica import RateBasedABR
 import matplotlib.pyplot as plt
-import locale
 import csv
 
 logging.basicConfig(
@@ -48,29 +47,15 @@ with open("metricas_streaming.csv",mode="w",newline="") as csvfile:
         "variação de atraso (jitter)_ewma_ms", "buffer_level_s", "buffer_can_play",
         "rebuffer_event", "stall_duration_s", "failover_total"
     ])
-
+    
+    politica = RateBasedABR(manifest.representations)
+    servidor = manifest.servers[0]
+    
     for i in range(10):
-        info_do_segmento = get_segmento(
-            manifest.servers[randint(0, len(manifest.servers) - 1)],
-            manifest.representations[randint(0, len(manifest.representations) - 1)],
-        )
+        representacao = politica.selecionar(info_rede.segmentos)
+        info_do_segmento = get_segmento(servidor, representacao)
 
         buffer.adicionar(manifest.segment_duration_s)
-
-        # logger.info("Segmento: %s", info_rede.indice_ultimo_segmento)
-        # logger.info("Timestamp: %s", info_do_segmento.timestamp)
-        # logger.info("Server ID: %s", info_do_segmento.server_id)
-        # logger.info("Quality: %s", info_do_segmento.quality)
-        # logger.info("Bitrate (kbps): %.3f", info_do_segmento.bitrate_kbps)
-        # logger.info("Vazão (kbps): %.3f", info_do_segmento.vazao_kbps)
-        # logger.info("Download time (s): %.3f", info_do_segmento.download_time_s)
-        # logger.info("Jitter (ms): %.3f", info_do_segmento.jitter_network_ms)
-        # logger.info("Jitter EWMA (ms): %.3f", info_rede.jitter_ewma)
-        # logger.info("Buffer level (s): %.3f", buffer.buffer_level_s)
-        # logger.info("Buffer can play: %s", buffer.buffer_can_play)
-        # logger.info("Rebuffer event: %s", buffer.rebuffer_event)
-        # logger.info("Stall duration: %.3f", buffer.stall_duration_s)
-        # logger.info("Failover total: %s", info_rede.failover_total)
 
         csvwriter.writerow([
             info_rede.indice_ultimo_segmento,
