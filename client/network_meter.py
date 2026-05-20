@@ -9,6 +9,34 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 
+class InfoSegmento:
+    def __init__(self, servidor: Server, representacao: Representation):
+        self.servidor = servidor
+        self.representacao = representacao
+
+        self.timestamp = datetime.now().isoformat()
+
+        self.server_id = servidor.id
+        self.quality = self.representacao.quality
+        self.bitrate_kbps = representacao.bitrate_kbps
+
+        self.vazao_kbps = 0.0
+        self.download_time_s = 0.0
+        self.jitter_network_ms = 0.0
+
+    def __str__(self):
+        class_dict = {
+            "timestamp": self.timestamp,
+            "server_id": self.server_id,
+            "quality": self.quality,
+            "bitrate_kbps": self.bitrate_kbps,
+            "vazao_kbps": self.vazao_kbps,
+            "download_time_s": self.download_time_s,
+            "jitter_network_ms": self.jitter_network_ms,
+        }
+        return __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
+
+
 class _InfoNetwork:
     def __init__(self):
         self.indice_ultimo_segmento = None
@@ -130,34 +158,6 @@ class _InfoNetwork:
                     fontsize=10,
                     alpha=0.8,
                 )
-
-
-class InfoSegmento:
-    def __init__(self, servidor: Server, representacao: Representation):
-        self.servidor = servidor
-        self.representacao = representacao
-
-        self.timestamp = datetime.now().isoformat()
-
-        self.server_id = servidor.id
-        self.quality = self.representacao.quality
-        self.bitrate_kbps = representacao.bitrate_kbps
-
-        self.vazao_kbps = 0.0
-        self.download_time_s = 0.0
-        self.jitter_network_ms = 0.0
-
-    def __str__(self):
-        class_dict = {
-            "timestamp": self.timestamp,
-            "server_id": self.server_id,
-            "quality": self.quality,
-            "bitrate_kbps": self.bitrate_kbps,
-            "vazao_kbps": self.vazao_kbps,
-            "download_time_s": self.download_time_s,
-            "jitter_network_ms": self.jitter_network_ms,
-        }
-        return __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
 
 
 def get_segmento(servidor: Server, representacao: Representation) -> InfoSegmento:

@@ -5,6 +5,7 @@ from buffer_manager import buffer
 from random import randint
 import matplotlib.pyplot as plt
 import locale
+import csv
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s (%(name)s) - %(message)s", 
@@ -38,29 +39,57 @@ for rep in manifest.representations:
 
 buffer.reset()
 
-for i in range(10):
-    info_do_segmento = get_segmento(
-        manifest.servers[randint(0, len(manifest.servers) - 1)],
-        manifest.representations[randint(0, len(manifest.representations) - 1)],
-    )
+with open("metricas_streaming.csv",mode="w",newline="") as csvfile:
+    csvwriter = csv.writer(csvfile)
 
-    buffer.adicionar(manifest.segment_duration_s)
+    csvwriter.writerow([
+        "segment", "timestamp", "server_id", "quality", "bitrate_kbps",
+        "vazão_kbps", "download_time_s", "variação de atraso (jitter)_network_ms",
+        "variação de atraso (jitter)_ewma_ms", "buffer_level_s", "buffer_can_play",
+        "rebuffer_event", "stall_duration_s", "failover_total"
+    ])
 
-    # testando se dados para csv estão disponíveis
-    logger.info("Segmento: %s", info_rede.indice_ultimo_segmento)
-    logger.info("Timestamp: %s", info_do_segmento.timestamp)
-    logger.info("Server ID: %s", info_do_segmento.server_id)
-    logger.info("Quality: %s", info_do_segmento.quality)
-    logger.info("Bitrate (kbps): %.3f", info_do_segmento.bitrate_kbps)
-    logger.info("Vazão (kbps): %.3f", info_do_segmento.vazao_kbps)
-    logger.info("Download time (s): %.3f", info_do_segmento.download_time_s)
-    logger.info("Jitter (ms): %.3f", info_do_segmento.jitter_network_ms)
-    logger.info("Jitter EWMA (ms): %.3f", info_rede.jitter_ewma)
-    logger.info("Buffer level (s): %.3f", buffer.buffer_level_s)
-    logger.info("Buffer can play: %s", buffer.buffer_can_play)
-    logger.info("Rebuffer event: %s", buffer.rebuffer_event)
-    logger.info("Stall duration: %.3f", buffer.stall_duration_s)
-    logger.info("Failover total: %s", info_rede.failover_total)
+    for i in range(10):
+        info_do_segmento = get_segmento(
+            manifest.servers[randint(0, len(manifest.servers) - 1)],
+            manifest.representations[randint(0, len(manifest.representations) - 1)],
+        )
+
+        buffer.adicionar(manifest.segment_duration_s)
+
+        # logger.info("Segmento: %s", info_rede.indice_ultimo_segmento)
+        # logger.info("Timestamp: %s", info_do_segmento.timestamp)
+        # logger.info("Server ID: %s", info_do_segmento.server_id)
+        # logger.info("Quality: %s", info_do_segmento.quality)
+        # logger.info("Bitrate (kbps): %.3f", info_do_segmento.bitrate_kbps)
+        # logger.info("Vazão (kbps): %.3f", info_do_segmento.vazao_kbps)
+        # logger.info("Download time (s): %.3f", info_do_segmento.download_time_s)
+        # logger.info("Jitter (ms): %.3f", info_do_segmento.jitter_network_ms)
+        # logger.info("Jitter EWMA (ms): %.3f", info_rede.jitter_ewma)
+        # logger.info("Buffer level (s): %.3f", buffer.buffer_level_s)
+        # logger.info("Buffer can play: %s", buffer.buffer_can_play)
+        # logger.info("Rebuffer event: %s", buffer.rebuffer_event)
+        # logger.info("Stall duration: %.3f", buffer.stall_duration_s)
+        # logger.info("Failover total: %s", info_rede.failover_total)
+
+        csvwriter.writerow([
+            info_rede.indice_ultimo_segmento,
+            info_do_segmento.timestamp,
+            "B" if info_do_segmento.server_id == "srv-B" else "A",
+            info_do_segmento.quality,
+            info_do_segmento.bitrate_kbps,
+            f"{info_do_segmento.vazao_kbps:.3f}",
+            f"{info_do_segmento.download_time_s:.3f}",
+            f"{info_do_segmento.jitter_network_ms:.3f}",
+            f"{info_rede.jitter_ewma:.3f}",
+            f"{buffer.buffer_level_s:.3f}",
+            1 if buffer.buffer_can_play else 0,
+            1 if buffer.rebuffer_event else 0,
+            f"{buffer.stall_duration_s:.3f}",
+            info_rede.failover_total
+        ])
+
+        logger.info("Segmento %s salvo em CSV",info_rede.indice_ultimo_segmento)
 
 buffer.encerrar()
 
