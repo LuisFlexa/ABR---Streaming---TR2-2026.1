@@ -169,9 +169,9 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
     logger.debug("Medindo vazão para URL: %s", url)
 
     try:
-        t0 = time.time()
         resposta = requests.get(url, stream=True)
         resposta.raise_for_status()
+        t0 = time.time()
 
         total_bytes = 0
         for chunk in resposta.iter_content(chunk_size=8192):
