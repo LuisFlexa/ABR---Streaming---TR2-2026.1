@@ -2,7 +2,7 @@ from manifest import get_manifesto
 import logging
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from random import randint
+from politica import RateBasedABR
 import matplotlib.pyplot as plt
 import locale
 
@@ -38,11 +38,12 @@ for rep in manifest.representations:
 
 buffer.reset()
 
+politica = RateBasedABR(manifest.representations)
+servidor = manifest.servers[0]
+
 for i in range(10):
-    info_do_segmento = get_segmento(
-        manifest.servers[randint(0, len(manifest.servers) - 1)],
-        manifest.representations[randint(0, len(manifest.representations) - 1)],
-    )
+    representacao = politica.selecionar(info_rede.segmentos)
+    info_do_segmento = get_segmento(servidor, representacao)
 
     buffer.adicionar(manifest.segment_duration_s)
 
