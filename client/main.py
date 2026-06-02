@@ -4,15 +4,14 @@ from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
 from politica import RateBasedABR
 import matplotlib.pyplot as plt
-import locale
+import csv
 
 logging.basicConfig(
-    format="%(asctime)s - %(levelname)s (%(name)s) - %(message)s", 
-    level=logging.DEBUG
+    format="%(asctime)s - %(levelname)s (%(name)s) - %(message)s", level=logging.DEBUG
 )
 for h in logging.getLogger().handlers:
-    h.formatter.default_time_format = '%Y-%m-%dT%H:%M:%S'
-    h.formatter.default_msec_format = '%s.%06d'
+    h.formatter.default_time_format = "%Y-%m-%dT%H:%M:%S"
+    h.formatter.default_msec_format = "%s.%06d"
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
@@ -36,32 +35,59 @@ for rep in manifest.representations:
         rep.url_path,
     )
 
-buffer.reset()
+buffer.iniciar()
 
-politica = RateBasedABR(manifest.representations)
-servidor = manifest.servers[0]
+with open("metricas_streaming.csv", mode="w", newline="") as csvfile:
+    csvwriter = csv.writer(csvfile)
 
-for i in range(10):
-    representacao = politica.selecionar(info_rede.segmentos)
-    info_do_segmento = get_segmento(servidor, representacao)
+    csvwriter.writerow(
+        [
+            "segment",
+            "timestamp",
+            "server_id",
+            "quality",
+            "bitrate_kbps",
+            "vazão_kbps",
+            "download_time_s",
+            "variação de atraso (jitter)_network_ms",
+            "variação de atraso (jitter)_ewma_ms",
+            "buffer_level_s",
+            "buffer_can_play",
+            "rebuffer_event",
+            "stall_duration_s",
+            "failover_total",
+        ]
+    )
 
-    buffer.adicionar(manifest.segment_duration_s)
+    politica = RateBasedABR(manifest.representations)
+    servidor = manifest.servers[0]
 
-    # testando se dados para csv estão disponíveis
-    logger.info("Segmento: %s", info_rede.indice_ultimo_segmento)
-    logger.info("Timestamp: %s", info_do_segmento.timestamp)
-    logger.info("Server ID: %s", info_do_segmento.server_id)
-    logger.info("Quality: %s", info_do_segmento.quality)
-    logger.info("Bitrate (kbps): %.3f", info_do_segmento.bitrate_kbps)
-    logger.info("Vazão (kbps): %.3f", info_do_segmento.vazao_kbps)
-    logger.info("Download time (s): %.3f", info_do_segmento.download_time_s)
-    logger.info("Jitter (ms): %.3f", info_do_segmento.jitter_network_ms)
-    logger.info("Jitter EWMA (ms): %.3f", info_rede.jitter_ewma)
-    logger.info("Buffer level (s): %.3f", buffer.buffer_level_s)
-    logger.info("Buffer can play: %s", buffer.buffer_can_play)
-    logger.info("Rebuffer event: %s", buffer.rebuffer_event)
-    logger.info("Stall duration: %.3f", buffer.stall_duration_s)
-    logger.info("Failover total: %s", info_rede.failover_total)
+    for i in range(10):
+        representacao = politica.selecionar(info_rede.segmentos)
+        info_do_segmento = get_segmento(servidor, representacao)
+
+        buffer.adicionar(manifest.segment_duration_s)
+
+        csvwriter.writerow(
+            [
+                info_rede.indice_ultimo_segmento,
+                info_do_segmento.timestamp,
+                "B" if info_do_segmento.server_id == "srv-B" else "A",
+                info_do_segmento.quality,
+                info_do_segmento.bitrate_kbps,
+                f"{info_do_segmento.vazao_kbps:.3f}",
+                f"{info_do_segmento.download_time_s:.3f}",
+                f"{info_do_segmento.jitter_network_ms:.3f}",
+                f"{info_rede.jitter_ewma:.3f}",
+                f"{buffer.buffer_level_s:.3f}",
+                1 if buffer.buffer_can_play else 0,
+                1 if buffer.rebuffer_event else 0,
+                f"{buffer.stall_duration_s:.3f}",
+                info_rede.failover_total,
+            ]
+        )
+
+        logger.info("Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento)
 
 buffer.encerrar()
 

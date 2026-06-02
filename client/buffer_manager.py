@@ -22,7 +22,6 @@ class _BufferManager:
         self._stop_event = threading.Event()
 
         self._thread = threading.Thread(target=self._consumir, daemon=True)
-        self._thread.start()
 
     def __str__(self):
         with self._lock:
@@ -36,7 +35,7 @@ class _BufferManager:
                 __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
             )
 
-    def reset(self):
+    def _reset(self):
         with self._lock:
             self.buffer_level_s = 0.0
             self.buffer_can_play = False
@@ -47,6 +46,13 @@ class _BufferManager:
             self._plt_buffer.clear()
             self._plt_tempo.clear()
             self._plt_rebuffer.clear()
+
+    def iniciar(self):
+        self._reset()
+        self._stop_event.clear()
+        if not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._consumir, daemon=True)
+            self._thread.start()
 
     def adicionar(self, valor):
         with self._lock:
@@ -91,7 +97,9 @@ class _BufferManager:
             with self._lock:
                 if self.buffer_level_s > 0:
                     if int(self._t) != int(self._t - self._dt):
-                        logger.debug("Consumindo buffer: nível=%fs", self.buffer_level_s)
+                        logger.debug(
+                            "Consumindo buffer: nível=%fs", self.buffer_level_s
+                        )
                     self.buffer_level_s = max(0.0, self.buffer_level_s - self._dt)
                     self.buffer_can_play = True
                     self.rebuffer_event = False

@@ -10,6 +10,34 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 
+class InfoSegmento:
+    def __init__(self, servidor: Server, representacao: Representation):
+        self.servidor = servidor
+        self.representacao = representacao
+
+        self.timestamp = datetime.now().isoformat()
+
+        self.server_id = servidor.id
+        self.quality = self.representacao.quality
+        self.bitrate_kbps = representacao.bitrate_kbps
+
+        self.vazao_kbps = 0.0
+        self.download_time_s = 0.0
+        self.jitter_network_ms = 0.0
+
+    def __str__(self):
+        class_dict = {
+            "timestamp": self.timestamp,
+            "server_id": self.server_id,
+            "quality": self.quality,
+            "bitrate_kbps": self.bitrate_kbps,
+            "vazao_kbps": self.vazao_kbps,
+            "download_time_s": self.download_time_s,
+            "jitter_network_ms": self.jitter_network_ms,
+        }
+        return __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
+
+
 class _InfoNetwork:
     def __init__(self):
         self.indice_ultimo_segmento = None
@@ -133,34 +161,6 @@ class _InfoNetwork:
                 )
 
 
-class InfoSegmento:
-    def __init__(self, servidor: Server, representacao: Representation):
-        self.servidor = servidor
-        self.representacao = representacao
-
-        self.timestamp = datetime.now().isoformat()
-
-        self.server_id = servidor.id
-        self.quality = self.representacao.quality
-        self.bitrate_kbps = representacao.bitrate_kbps
-
-        self.vazao_kbps = 0.0
-        self.download_time_s = 0.0
-        self.jitter_network_ms = 0.0
-
-    def __str__(self):
-        class_dict = {
-            "timestamp": self.timestamp,
-            "server_id": self.server_id,
-            "quality": self.quality,
-            "bitrate_kbps": self.bitrate_kbps,
-            "vazao_kbps": self.vazao_kbps,
-            "download_time_s": self.download_time_s,
-            "jitter_network_ms": self.jitter_network_ms,
-        }
-        return __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
-
-
 def get_segmento(servidor: Server, representacao: Representation) -> InfoSegmento:
     info = InfoSegmento(servidor, representacao)
     url = f"{servidor.url}{representacao.url_path}"
@@ -169,9 +169,9 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
     logger.debug("Medindo vazão para URL: %s", url)
 
     try:
-        t0 = time.time()
         resposta = requests.get(url, stream=True)
         resposta.raise_for_status()
+        t0 = time.time()
 
         total_bytes = 0
         for chunk in resposta.iter_content(chunk_size=8192):
