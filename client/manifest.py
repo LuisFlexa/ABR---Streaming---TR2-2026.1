@@ -10,6 +10,12 @@ fallback_url = os.getenv("FALLBACK_URL")
 logger = logging.getLogger(__name__)
 
 
+class Status:
+    OK = "ok"
+    DOWN = "down"
+    UNKNOWN = "unknown"
+
+
 class Server:
     def __init__(self, data: dict):
         self.id: str = data["id"]
@@ -17,6 +23,20 @@ class Server:
         self.priority: int = data["priority"]
         self.bandwidth_kbps: int = data["bandwidth_kbps"]
         self.jitter_ms: int = data["jitter_ms"]
+        self.status: Status = Status.UNKNOWN
+
+    def get_health(self) -> Status:
+        try:
+            response = requests.get(self.url + "/health", timeout=5)
+            response.raise_for_status()
+            health_status = response.json().get("status")
+            if health_status == "ok":
+                self.status = Status.OK
+            else:
+                self.status = Status.DOWN
+        except requests.RequestException:
+            self.status = Status.DOWN
+        return self.status
 
 
 class Representation:

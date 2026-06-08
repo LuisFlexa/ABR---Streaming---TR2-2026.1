@@ -4,7 +4,7 @@ import time
 import statistics
 import requests
 import logging
-from manifest import Representation, Server
+from manifest import Representation, Server, Status
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
@@ -171,6 +171,17 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
     try:
         resposta = requests.get(url, stream=True)
         resposta.raise_for_status()
+
+        # MOCK PARA SIMULAR FALHA!!!
+        if info_rede.indice_ultimo_segmento == 4 and servidor.id == "A":
+            # Simula falha de download para testar failover
+            raise requests.exceptions.Timeout("Simulated download failure for testing.")
+        elif info_rede.indice_ultimo_segmento == 7 and servidor.id == "srv-B":
+            # Simula falha de download para testar failover
+            raise requests.exceptions.ConnectionError(
+                "Simulated connection error for testing."
+            )
+
         t0 = time.time()
 
         total_bytes = 0
@@ -201,6 +212,7 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
         )
     except Exception as e:
         logger.exception("Erro ao medir vazão: %s", e)
+        servidor.status = Status.UNKNOWN
         raise
 
     info_rede.adicionar_segmento(info)
