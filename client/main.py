@@ -2,7 +2,7 @@ from manifest import get_manifesto
 import logging
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from politica import RateBasedABR
+from politica import BufferBasedABR
 import matplotlib.pyplot as plt
 import csv
 
@@ -59,7 +59,7 @@ with open("metricas_streaming.csv", mode="w", newline="") as csvfile:
         ]
     )
 
-    politica = RateBasedABR(manifest.representations)
+    politica = BufferBasedABR(manifest.representations)
     servidor = manifest.servers[0]
 
     for i in range(10):
