@@ -4,7 +4,7 @@ from manifest import Status, get_manifesto
 import logging
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from politica import BufferBasedABR
+from politica import BufferBasedABR, RateBasedABR
 import matplotlib.pyplot as plt
 import csv
 
@@ -37,9 +37,13 @@ for rep in manifest.representations:
         rep.url_path,
     )
 
+politica = BufferBasedABR(manifest.representations)
+
 buffer.iniciar()
 
-with open("metricas_streaming.csv", mode="w", newline="") as csvfile:
+with open(
+    "metricas_streaming_{}.csv".format(politica.__class__.__name__), mode="w", newline=""
+) as csvfile:
     csvwriter = csv.writer(csvfile)
 
     csvwriter.writerow(
@@ -61,13 +65,12 @@ with open("metricas_streaming.csv", mode="w", newline="") as csvfile:
         ]
     )
 
-    politica = BufferBasedABR(manifest.representations)
     i_servidor = 0
     servidor = manifest.servers[i_servidor]
 
     while (
         info_rede.indice_ultimo_segmento == None
-        or info_rede.indice_ultimo_segmento < 30
+        or info_rede.indice_ultimo_segmento < 20
     ):
         representacao = politica.selecionar(info_rede.segmentos)
 
@@ -99,10 +102,13 @@ with open("metricas_streaming.csv", mode="w", newline="") as csvfile:
         except RequestException as e:
             logger.error("Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível...")
 
-            for s in filter(lambda x: x.status != Status.DOWN, manifest.servers):
-                if s.status == Status.DOWN:
-                    continue
+            # Envia o servidor com falha para o final da lista (dá última chance antes de marcar como DOWN)
+            manifest.servers.append(manifest.servers.pop(i_servidor))
 
+            for s in filter(
+                lambda x: x.status != Status.DOWN,
+                manifest.servers,
+            ):
                 logger.debug("Verificando saúde do servidor %s...", s.id)
 
                 health = s.get_health()
