@@ -37,106 +37,110 @@ for rep in manifest.representations:
         rep.url_path,
     )
 
-politica = BufferBasedABR(manifest.representations)
+politicas = [RateBasedABR(manifest.representations), BufferBasedABR(manifest.representations)]
 
-buffer.iniciar()
+for politica in politicas:
+    with open(
+        "metricas_streaming_{}.csv".format(politica.__class__.__name__), mode="w", newline=""
+    ) as csvfile:
+        csvwriter = csv.writer(csvfile)
 
-with open(
-    "metricas_streaming_{}.csv".format(politica.__class__.__name__), mode="w", newline=""
-) as csvfile:
-    csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(
+            [
+                "segment",
+                "timestamp",
+                "server_id",
+                "quality",
+                "bitrate_kbps",
+                "vazão_kbps",
+                "download_time_s",
+                "variação de atraso (jitter)_network_ms",
+                "variação de atraso (jitter)_ewma_ms",
+                "buffer_level_s",
+                "buffer_can_play",
+                "rebuffer_event",
+                "stall_duration_s",
+                "failover_total",
+            ]
+        )
 
-    csvwriter.writerow(
-        [
-            "segment",
-            "timestamp",
-            "server_id",
-            "quality",
-            "bitrate_kbps",
-            "vazão_kbps",
-            "download_time_s",
-            "variação de atraso (jitter)_network_ms",
-            "variação de atraso (jitter)_ewma_ms",
-            "buffer_level_s",
-            "buffer_can_play",
-            "rebuffer_event",
-            "stall_duration_s",
-            "failover_total",
-        ]
-    )
+        i_servidor = 0
+        servidor = manifest.servers[i_servidor]
 
-    i_servidor = 0
-    servidor = manifest.servers[i_servidor]
+        buffer.iniciar()
 
-    while (
-        info_rede.indice_ultimo_segmento == None
-        or info_rede.indice_ultimo_segmento < 20
-    ):
-        representacao = politica.selecionar(info_rede.segmentos)
+        while (
+            info_rede.indice_ultimo_segmento == None
+            or info_rede.indice_ultimo_segmento < 15
+        ):
+            representacao = politica.selecionar(info_rede.segmentos)
 
-        try:
-            info_do_segmento = get_segmento(servidor, representacao)
+            try:
+                info_do_segmento = get_segmento(servidor, representacao)
 
-            buffer.adicionar(manifest.segment_duration_s)
+                buffer.adicionar(manifest.segment_duration_s)
 
-            csvwriter.writerow(
-                [
-                    info_rede.indice_ultimo_segmento,
-                    info_do_segmento.timestamp,
-                    "B" if info_do_segmento.server_id == "srv-B" else "A",
-                    info_do_segmento.quality,
-                    info_do_segmento.bitrate_kbps,
-                    f"{info_do_segmento.vazao_kbps:.3f}",
-                    f"{info_do_segmento.download_time_s:.3f}",
-                    f"{info_do_segmento.jitter_network_ms:.3f}",
-                    f"{info_rede.jitter_ewma:.3f}",
-                    f"{buffer.buffer_level_s:.3f}",
-                    1 if buffer.buffer_can_play else 0,
-                    1 if buffer.rebuffer_event else 0,
-                    f"{buffer.stall_duration_s:.3f}",
-                    info_rede.failover_total,
-                ]
-            )
+                csvwriter.writerow(
+                    [
+                        info_rede.indice_ultimo_segmento,
+                        info_do_segmento.timestamp,
+                        "B" if info_do_segmento.server_id == "srv-B" else "A",
+                        info_do_segmento.quality,
+                        info_do_segmento.bitrate_kbps,
+                        f"{info_do_segmento.vazao_kbps:.3f}",
+                        f"{info_do_segmento.download_time_s:.3f}",
+                        f"{info_do_segmento.jitter_network_ms:.3f}",
+                        f"{info_rede.jitter_ewma:.3f}",
+                        f"{buffer.buffer_level_s:.3f}",
+                        1 if buffer.buffer_can_play else 0,
+                        1 if buffer.rebuffer_event else 0,
+                        f"{buffer.stall_duration_s:.3f}",
+                        info_rede.failover_total,
+                    ]
+                )
 
-            logger.info("Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento)
-        except RequestException as e:
-            logger.error("Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível...")
+                logger.info("Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento)
+            except RequestException as e:
+                logger.error("Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível...")
 
-            # Envia o servidor com falha para o final da lista (dá última chance antes de marcar como DOWN)
-            manifest.servers.append(manifest.servers.pop(i_servidor))
+                # Envia o servidor com falha para o final da lista (dá última chance antes de marcar como DOWN)
+                manifest.servers.append(manifest.servers.pop(i_servidor))
 
-            for s in filter(
-                lambda x: x.status != Status.DOWN,
-                manifest.servers,
-            ):
-                logger.debug("Verificando saúde do servidor %s...", s.id)
+                for s in filter(
+                    lambda x: x.status != Status.DOWN,
+                    manifest.servers,
+                ):
+                    logger.debug("Verificando saúde do servidor %s...", s.id)
 
-                health = s.get_health()
+                    health = s.get_health()
 
-                if health == Status.OK:
-                    logger.info(
-                        "Servidor %s está saudável. Retentando download...", s.id
-                    )
-                    i_servidor = (i_servidor + 1) % len(manifest.servers)
-                    servidor = manifest.servers[i_servidor]
+                    if health == Status.OK:
+                        logger.info(
+                            "Servidor %s está saudável. Retentando download...", s.id
+                        )
+                        i_servidor = (i_servidor + 1) % len(manifest.servers)
+                        servidor = manifest.servers[i_servidor]
+                        break
+                    else:
+                        logger.warning("Servidor %s está indisponível.", s.id)
+
+                if all(s.status == Status.DOWN for s in manifest.servers):
+                    logger.error("Todos os servidores estão indisponíveis. Encerrando.")
                     break
-                else:
-                    logger.warning("Servidor %s está indisponível.", s.id)
-
-            if all(s.status == Status.DOWN for s in manifest.servers):
-                logger.error("Todos os servidores estão indisponíveis. Encerrando.")
-                break
 
 
-buffer.encerrar()
+    buffer.encerrar()
 
-plt.figure(figsize=(12, 8))
-plt.subplot(2, 2, 1)
-buffer.plot(no_figure=True)
-plt.subplot(2, 2, 2)
-info_rede.plot_vazao(no_figure=True)
-plt.subplot(2, 2, 3)
-info_rede.plot_qualidade(no_figure=True)
-plt.subplot(2, 2, 4)
-info_rede.plot_jitter(no_figure=True)
-plt.show()
+    plt.figure(figsize=(12, 8))
+    ax1 = plt.subplot(2, 2, 1)
+    buffer.plot(no_figure=True)
+    plt.subplot(2, 2, 2, sharex=ax1)
+    info_rede.plot_vazao(no_figure=True)
+    plt.subplot(2, 2, 3, sharex=ax1)
+    info_rede.plot_qualidade(no_figure=True)
+    plt.subplot(2, 2, 4, sharex=ax1)
+    info_rede.plot_jitter(no_figure=True)
+    plt.savefig("metricas_streaming_{}.png".format(politica.__class__.__name__))
+    plt.close()
+
+    info_rede.reset()

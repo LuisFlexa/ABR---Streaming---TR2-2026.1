@@ -65,6 +65,18 @@ class _InfoNetwork:
         }
         return __name__ + "\n" + "\n".join(f"{k}: {v}" for k, v in class_dict.items())
 
+    def reset(self):
+        self.indice_ultimo_segmento = None
+        self.segmentos.clear()
+        self.jitter_ewma = 0.0
+        self.failover_total = 0
+        self._plt_tempo.clear()
+        self._plt_vazao.clear()
+        self._plt_qualidade.clear()
+        self._plt_jitter.clear()
+        self._plt_jitter_ewma.clear()
+        self._plt_troca_servidor.clear()
+
     def adicionar_segmento(self, info_segmento: InfoSegmento):
         troca_de_servidor = (
             len(self.segmentos) > 0
