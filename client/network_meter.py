@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import statistics
 import requests
@@ -9,13 +9,18 @@ import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
+_t0 = time.monotonic()
+_dt0 = datetime.now()
 
 class InfoSegmento:
     def __init__(self, servidor: Server, representacao: Representation):
         self.servidor = servidor
         self.representacao = representacao
 
-        self.timestamp = datetime.now().isoformat()
+
+        self.timestamp = (
+            _dt0 + timedelta(seconds=time.monotonic() - _t0)
+        ).isoformat()
 
         self.server_id = servidor.id
         self.quality = self.representacao.quality
@@ -188,15 +193,15 @@ def get_segmento(servidor: Server, representacao: Representation) -> InfoSegment
                 "Simulated connection error for testing."
             )
 
-        t0 = time.time()
+        t0 = time.monotonic()
 
         total_bytes = 0
         for chunk in resposta.iter_content(chunk_size=8192):
             if chunk:
                 total_bytes += len(chunk)
-                t_chunks_ms.append((time.time() - t0) * 1000)
+                t_chunks_ms.append((time.monotonic() - t0) * 1000)
 
-        tf = time.time()
+        tf = time.monotonic()
         info.jitter_network_ms = (
             statistics.mean(
                 [
