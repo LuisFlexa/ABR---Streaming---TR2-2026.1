@@ -146,10 +146,11 @@ class _InfoNetwork:
             plt.figure(figsize=(12, 8))
 
         plt.plot(self._plt_tempo, self._plt_qualidade, marker="o")
+        plt.ylim((240, 1080))
         self._adicionar_troca_servidor_no_plot()
         plt.yticks(
-            sorted(set(self._plt_qualidade)),
-            labels=[f"{q}p" for q in sorted(set(self._plt_qualidade))],
+            [240, 360, 480, 720, 1080],
+            labels=["240p", "360p", "480p", "720p", "1080p"],
         )
         plt.title("Qualidade ao longo do tempo")
         plt.xlabel("Tempo")

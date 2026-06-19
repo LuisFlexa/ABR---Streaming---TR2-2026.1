@@ -4,7 +4,14 @@ from manifest import Status, get_manifesto
 import logging
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from politica import BufferBasedABR, RateBasedABR
+from politica import (
+    JitterBasedABR,
+    EWMABasedABR,
+    BufferBasedABR,
+    StdDevBasedABR,
+    RateBasedABR,
+    BufferRateBasedABR,
+)
 import matplotlib.pyplot as plt
 import csv
 
@@ -36,12 +43,28 @@ for rep in manifest.representations:
         rep.segment_bytes,
         rep.url_path,
     )
+    
+rateBasedABR = RateBasedABR(manifest.representations)
+bufferBasedABR = BufferBasedABR(manifest.representations)
+stdDevBasedABR = StdDevBasedABR(manifest.representations)
+ewmaBasedABR = EWMABasedABR(manifest.representations)
+bufferRateBasedABR = BufferRateBasedABR(manifest.representations)
+jitterBasedABR = JitterBasedABR(manifest.representations)
 
-politicas = [RateBasedABR(manifest.representations), BufferBasedABR(manifest.representations)]
+politicas = [
+    rateBasedABR,
+    bufferBasedABR,
+    stdDevBasedABR,
+    ewmaBasedABR,
+    bufferRateBasedABR,
+    jitterBasedABR,
+]
 
 for politica in politicas:
     with open(
-        "metricas_streaming_{}.csv".format(politica.__class__.__name__), mode="w", newline=""
+        "out/metricas_streaming_{}.csv".format(politica.__class__.__name__),
+        mode="w",
+        newline="",
     ) as csvfile:
         csvwriter = csv.writer(csvfile)
 
@@ -71,7 +94,7 @@ for politica in politicas:
 
         while (
             info_rede.indice_ultimo_segmento == None
-            or info_rede.indice_ultimo_segmento < 15
+            or info_rede.indice_ultimo_segmento < 30
         ):
             representacao = politica.selecionar(info_rede.segmentos)
 
@@ -99,9 +122,13 @@ for politica in politicas:
                     ]
                 )
 
-                logger.info("Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento)
+                logger.info(
+                    "Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento
+                )
             except RequestException as e:
-                logger.error("Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível...")
+                logger.error(
+                    "Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível..."
+                )
 
                 # Envia o servidor com falha para o final da lista (dá última chance antes de marcar como DOWN)
                 manifest.servers.append(manifest.servers.pop(i_servidor))
@@ -128,7 +155,6 @@ for politica in politicas:
                     logger.error("Todos os servidores estão indisponíveis. Encerrando.")
                     break
 
-
     buffer.encerrar()
 
     plt.figure(figsize=(12, 8))
@@ -140,7 +166,7 @@ for politica in politicas:
     info_rede.plot_qualidade(no_figure=True)
     plt.subplot(2, 2, 4, sharex=ax1)
     info_rede.plot_jitter(no_figure=True)
-    plt.savefig("metricas_streaming_{}.png".format(politica.__class__.__name__))
+    plt.savefig("out/metricas_streaming_{}.png".format(politica.__class__.__name__))
     plt.close()
 
     info_rede.reset()
