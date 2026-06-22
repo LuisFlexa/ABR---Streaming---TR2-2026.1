@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import logging
 
 _BUFFER_DT = 0.05
+_BUFFER_MAX_S = 30  # teto do buffer: nunca acumula mais que isso
 logger = logging.getLogger(__name__)
 
 
@@ -12,6 +13,9 @@ class _BufferManager:
         self.buffer_can_play: bool = False
         self.rebuffer_event: bool = False
         self.stall_duration_s: float = 0.0
+        # Teto do buffer (segundos). None = ilimitado. Simula o limite de um
+        # player real, que não acumula conteúdo indefinidamente.
+        self.limite_max_s: float | None = _BUFFER_MAX_S
         self._dt: float = dt
         self._t0: float = time.monotonic()
         self._t: float = 0.0
@@ -57,6 +61,8 @@ class _BufferManager:
     def adicionar(self, valor):
         with self._lock:
             self.buffer_level_s += valor
+            if self.limite_max_s is not None:
+                self.buffer_level_s = min(self.limite_max_s, self.buffer_level_s)
 
     def plot(self, no_figure=False):
         with self._lock:

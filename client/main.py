@@ -2,11 +2,16 @@ from requests import RequestException
 
 from manifest import Status, get_manifesto
 import logging
+import time
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
 from politica import BufferBasedABR, RateBasedABR
 import matplotlib.pyplot as plt
 import csv
+
+# Parâmetros de simulação do player (controle de continuous play).
+NUM_SEGMENTOS = 20  # quantos segmentos baixar na sessão
+BUFFER_TARGET_S = 15  # nível-alvo: acima dele, pace no ritmo do playback
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s (%(name)s) - %(message)s", level=logging.DEBUG
@@ -37,11 +42,16 @@ for rep in manifest.representations:
         rep.url_path,
     )
 
-politicas = [RateBasedABR(manifest.representations), BufferBasedABR(manifest.representations)]
+politicas = [
+    RateBasedABR(manifest.representations),
+    BufferBasedABR(manifest.representations),
+]
 
 for politica in politicas:
     with open(
-        "metricas_streaming_{}.csv".format(politica.__class__.__name__), mode="w", newline=""
+        "metricas_streaming_{}.csv".format(politica.__class__.__name__),
+        mode="w",
+        newline="",
     ) as csvfile:
         csvwriter = csv.writer(csvfile)
 
@@ -71,14 +81,23 @@ for politica in politicas:
 
         while (
             info_rede.indice_ultimo_segmento == None
-            or info_rede.indice_ultimo_segmento < 15
+            or info_rede.indice_ultimo_segmento < NUM_SEGMENTOS
         ):
             representacao = politica.selecionar(info_rede.segmentos)
 
             try:
                 info_do_segmento = get_segmento(servidor, representacao)
 
+                # Conteúdo novo entra no buffer (a thread do BufferManager já drenou
+                # o buffer em tempo real durante o download). O teto BUFFER_MAX_S é
+                # aplicado dentro de adicionar().
                 buffer.adicionar(manifest.segment_duration_s)
+
+                # buffer_can_play: há buffer suficiente para cobrir o próximo
+                # download? Estimamos o próximo pelo tempo do segmento recém-baixado.
+                buffer_can_play = (
+                    buffer.buffer_level_s > info_do_segmento.download_time_s
+                )
 
                 csvwriter.writerow(
                     [
@@ -92,16 +111,37 @@ for politica in politicas:
                         f"{info_do_segmento.jitter_network_ms:.3f}",
                         f"{info_rede.jitter_ewma:.3f}",
                         f"{buffer.buffer_level_s:.3f}",
-                        1 if buffer.buffer_can_play else 0,
+                        1 if buffer_can_play else 0,
                         1 if buffer.rebuffer_event else 0,
                         f"{buffer.stall_duration_s:.3f}",
                         info_rede.failover_total,
                     ]
                 )
 
-                logger.info("Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento)
+                logger.info(
+                    "Segmento %s salvo em CSV", info_rede.indice_ultimo_segmento
+                )
+
+                # Simula o consumo do player: espera o tempo que ele levaria para
+                # reproduzir o segmento. Na fase de enchimento (buffer abaixo do
+                # alvo) baixa o mais rápido possível; depois pace no ritmo real. A
+                # thread do BufferManager drena o buffer durante esta espera.
+                espera = max(
+                    0.0, manifest.segment_duration_s - info_do_segmento.download_time_s
+                )
+                if buffer.buffer_level_s < BUFFER_TARGET_S:
+                    espera = 0.0  # ainda enchendo o buffer até o alvo
+                if espera > 0:
+                    logger.debug(
+                        "Pacing playback: aguardando %.2fs (buffer=%.2fs)",
+                        espera,
+                        buffer.buffer_level_s,
+                    )
+                time.sleep(espera)
             except RequestException as e:
-                logger.error("Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível...")
+                logger.error(
+                    "Erro ao obter segmento. Tentando obter segmento do próximo servidor disponível..."
+                )
 
                 # Envia o servidor com falha para o final da lista (dá última chance antes de marcar como DOWN)
                 manifest.servers.append(manifest.servers.pop(i_servidor))
@@ -127,7 +167,6 @@ for politica in politicas:
                 if all(s.status == Status.DOWN for s in manifest.servers):
                     logger.error("Todos os servidores estão indisponíveis. Encerrando.")
                     break
-
 
     buffer.encerrar()
 
