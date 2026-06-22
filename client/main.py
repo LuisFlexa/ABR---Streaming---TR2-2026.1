@@ -1,11 +1,12 @@
 from requests import RequestException
 
 from manifest import Status, get_manifesto
+import argparse
 import logging
 import time
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from politica import BufferBasedABR, RateBasedABR
+from politica import BufferBasedABR, RateBasedABR, EWMAHibridaABR
 import matplotlib.pyplot as plt
 import csv
 
@@ -13,6 +14,22 @@ import csv
 NUM_SEGMENTOS = 20  # quantos segmentos baixar na sessão
 BUFFER_MAX_S = 30  # teto do buffer: nunca acumula mais que isso
 BUFFER_TARGET_S = 15  # nível-alvo: acima dele, pace no ritmo do playback
+
+# Políticas ABR disponíveis (P1, P2, P3). O CSV é nomeado pela classe.
+POLITICAS = {
+    "rate": RateBasedABR,  # P1 baseline
+    "buffer": BufferBasedABR,  # P2 buffer-based
+    "hibrida": EWMAHibridaABR,  # P3 híbrida (EWMA + jitter + buffer)
+}
+
+parser = argparse.ArgumentParser(description="Cliente de streaming adaptativo (ABR).")
+parser.add_argument(
+    "--politica",
+    choices=POLITICAS.keys(),
+    default="hibrida",
+    help="Política ABR: rate (P1), buffer (P2) ou hibrida (P3).",
+)
+args = parser.parse_args()
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s (%(name)s) - %(message)s", level=logging.DEBUG
@@ -43,7 +60,8 @@ for rep in manifest.representations:
         rep.url_path,
     )
 
-politica = BufferBasedABR(manifest.representations)
+politica = POLITICAS[args.politica](manifest.representations)
+logger.info("Política ABR selecionada: %s (%s)", args.politica, politica.__class__.__name__)
 
 buffer.iniciar()
 buffer.limite_max_s = BUFFER_MAX_S
