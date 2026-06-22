@@ -12,6 +12,9 @@ class _BufferManager:
         self.buffer_can_play: bool = False
         self.rebuffer_event: bool = False
         self.stall_duration_s: float = 0.0
+        # Teto do buffer (segundos). None = ilimitado. Simula o limite de um
+        # player real, que não acumula conteúdo indefinidamente.
+        self.limite_max_s: float | None = None
         self._dt: float = dt
         self._t0: float = time.monotonic()
         self._t: float = 0.0
@@ -57,6 +60,8 @@ class _BufferManager:
     def adicionar(self, valor):
         with self._lock:
             self.buffer_level_s += valor
+            if self.limite_max_s is not None:
+                self.buffer_level_s = min(self.limite_max_s, self.buffer_level_s)
 
     def plot(self, no_figure=False):
         with self._lock:
