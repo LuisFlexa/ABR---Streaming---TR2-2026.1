@@ -6,12 +6,12 @@ import logging
 import time
 from network_meter import get_segmento, info_rede
 from buffer_manager import buffer
-from politica import BufferBasedABR, RateBasedABR, EWMAHibridaABR
+from politica import BufferBasedABR, RateBasedABR, EWMAHibridaABR, JitterBasedABR
 import matplotlib.pyplot as plt
 import csv
 
 # Parâmetros de simulação do player (controle de continuous play).
-NUM_SEGMENTOS = 20  # quantos segmentos baixar na sessão
+NUM_SEGMENTOS = 40  # quantos segmentos baixar na sessão
 BUFFER_MAX_S = 30  # teto do buffer: nunca acumula mais que isso
 BUFFER_TARGET_S = 15  # nível-alvo: acima dele, pace no ritmo do playback
 
@@ -19,7 +19,8 @@ BUFFER_TARGET_S = 15  # nível-alvo: acima dele, pace no ritmo do playback
 POLITICAS = {
     "rate": RateBasedABR,  # P1 baseline
     "buffer": BufferBasedABR,  # P2 buffer-based
-    "hibrida": EWMAHibridaABR,  # P3 híbrida (EWMA + jitter + buffer)
+    "hibrida": EWMAHibridaABR,  # P3.1 híbrida (EWMA + jitter + buffer)
+    "jitter": JitterBasedABR,  # P3.2 jitter-based
 }
 
 parser = argparse.ArgumentParser(description="Cliente de streaming adaptativo (ABR).")
